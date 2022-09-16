@@ -57,12 +57,13 @@ def get_one_page_title_url_list(url, not_add_csv=True):
         return {}
 
 
-def get_all_title_url_list2(root_url):
+def get_all_title_url_list(root_url):
     title_url = get_one_page_title_url_list(root_url, not_add_csv=True)
     with ThreadPoolExecutor(50) as t:
         for page_number in range(2, 825):
             t.submit(get_one_page_title_url_list, root_url + str(page_number), False)
     print("\ndone!")
+    
 
 # def get_all_title_url_list(root_url):
 #     page_number = 1
@@ -97,24 +98,20 @@ def get_all_title_url_list2(root_url):
 #     return all_title_url
 
 
-def get_book_content_list(url):
-    title_url = get_title_url_list(url)
-    for book_title, url in title_url.items():
-        book_url = first_url + url
-        soup = get_html(book_url)
-        content_url = soup.find(name='div', attrs='lRSQphVsn').find_all('li')
+# def get_book_content_list():
+#     pass
 
 
-
-# def get_title(url):
-#     soup = get_html(url)
-#     title = soup.find('div', class_="container").find('h1').string
-
-#     return title
-    
-
-def get_one_page_content(url):
-    pass
+def get_one_page_content(url, book_title):
+    soup = get_html(url)
+    if soup == None:
+        return None
+    else:
+        content = soup.find(name='div', attrs='aQHuOqEcj').text
+        with open('./%s.txt'%book_title, 'a', encoding='utf-8') as f:
+            f.write(content)
+            
+        return content
 
 
 def get_nextpage(url):
