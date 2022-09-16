@@ -2,7 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 from retrying import retry
 import pickle
-from threading import Thread, current_thread
+import pandas as pd
+from zhon.hanzi import punctuation as cn_punc
+from string import punctuation as en_punc
+from concurrent.futures import ThreadPoolExecutor
 
 
 @retry(stop_max_attempt_number=10)
@@ -25,56 +28,73 @@ def get_html(url):
         print("get %s fail"%url)
 
         return None
-
+    
 
 # @retry(stop_max_attempt_number=10)
-def get_one_page_title_url_list(url):
+def get_one_page_title_url_list(url, not_add_csv=True):
     soup = get_html(url)
+    punctuation_check = cn_punc + en_punc
     if soup != None:
         div_list = soup.find_all(name='div', attrs="fmKVwHzYQ")
         title_list, url_list = [], []
         for item in div_list:
             res = item.find('a')
-            title_list.append(res.string)
-            url_list.append(res['href'])
+            title = res.string
+            book_url = res['href']
+            for i in punctuation_check:
+                title = title.replace(i, '')
+            if len(title) > 0 and len(book_url) > 0:
+                title_list.append(title)
+                url_list.append(book_url)
         title_url = dict(zip(title_list, url_list))
-
+        title_url_pd = pd.DataFrame(list(title_url.items()), columns=["title", "url"])
+        with open('./title_url2.csv', mode='a', encoding='utf_8_sig', errors='ignore', newline='') as f:         
+            title_url_pd.to_csv(f, index=False, header=not_add_csv)
+        print(url + "success!")
+        
         return title_url
     else:
         return {}
 
 
-def get_all_title_url_list(root_url):
-    page_number = 1
-    page_url = root_url
-    all_title_url = {}
-    new_page_title_url = get_one_page_title_url_list(page_url)
-    if new_page_title_url != {}:
-        print("successfully get page %d"%page_number)
-    all_title_url.update(new_page_title_url)
-    while True:
-        last_page_title_url = new_page_title_url
-        page_number += 1
-        page_url = root_url + str(page_number) + '/'
-        new_page_title_url = get_one_page_title_url_list(page_url)
-        if new_page_title_url != {}:
-            print("successfully get page %d"%page_number)
-        '''
-        Judge whether reach the final page.
-        method: if reach the final + 1 page, we will get the same thing. So we can 
-        check whether new page title urls are the same with last page title urls
-        '''
-        if new_page_title_url != {} and last_page_title_url != {} \
-            and all(x in last_page_title_url.keys() for x in new_page_title_url.keys()):
-            print("reach final page")
-            break
-        all_title_url.update(new_page_title_url)
+def get_all_title_url_list2(root_url):
+    title_url = get_one_page_title_url_list(root_url, not_add_csv=True)
+    with ThreadPoolExecutor(50) as t:
+        for page_number in range(2, 825):
+            t.submit(get_one_page_title_url_list, root_url + str(page_number), False)
+    print("\ndone!")
 
-        if page_number % 10 == 0:
-            with open('./all_title_list_%d.pkl'%page_number, "wb") as f:
-                pickle.dump(all_title_url, f)
+# def get_all_title_url_list(root_url):
+#     page_number = 1
+#     page_url = root_url
+#     all_title_url = {}
+#     new_page_title_url = get_one_page_title_url_list(page_url)
+#     if new_page_title_url != {}:
+#         print("successfully get page %d"%page_number)
+#     all_title_url.update(new_page_title_url)
+#     while True:
+#         last_page_title_url = new_page_title_url
+#         page_number += 1
+#         page_url = root_url + str(page_number) + '/'
+#         new_page_title_url = get_one_page_title_url_list(page_url)
+#         if new_page_title_url != {}:
+#             print("successfully get page %d"%page_number)
+#         '''
+#         Judge whether reach the final page.
+#         method: if reach the final + 1 page, we will get the same thing. So we can 
+#         check whether new page title urls are the same with last page title urls
+#         '''
+#         if new_page_title_url != {} and last_page_title_url != {} \
+#             and all(x in last_page_title_url.keys() for x in new_page_title_url.keys()):
+#             print("reach final page")
+#             break
+#         all_title_url.update(new_page_title_url)
 
-    return all_title_url
+#         if page_number % 10 == 0:
+#             with open('./all_title_list_%d.pkl'%page_number, "wb") as f:
+#                 pickle.dump(all_title_url, f)
+
+#     return all_title_url
 
 
 def get_book_content_list(url):
@@ -109,5 +129,5 @@ if __name__ == "__main__":
     root_url = "https://m.moyanxsw.com/quanben/sort/"
     first_url = "https://m.moyanxsw.com/"
     save_path = ""
-
-    save_txt(root_url, first_url, save_path)
+    # get_all_title_url_list2(root_url)
+    # save_txt(root_url, first_url, save_path)
