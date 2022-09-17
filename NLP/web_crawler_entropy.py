@@ -1,11 +1,12 @@
 import requests
 from bs4 import BeautifulSoup
 from retrying import retry
-import pickle
 import pandas as pd
 from zhon.hanzi import punctuation as cn_punc
 from string import punctuation as en_punc
 from concurrent.futures import ThreadPoolExecutor
+import asyncio
+import aiohttp
 
 
 @retry(stop_max_attempt_number=10)
@@ -105,26 +106,20 @@ def get_all_title_url_list(url):
 def get_content_url(title_url):
     soup = get_html(title_url)
     if soup == None:
-        print("get book fail")
-
         return None
     else:
         read_url = soup.find(name='li', attrs='eUWPgsxrR').find('a')['href']
-
         return read_url
 
-'''
-<a href="javascript:void(0);">没有了</a>
-'''
+
+#<a href="javascript:void(0);">没有了</a>
 def get_one_page_content(url):
     content_soup = get_html(url)
-    print(content_soup)
     if content_soup == None:
         print("get content fail")
         return None, None
     else:
         content = content_soup.find(name='div', attrs='aQHuOqEcj').text
-            
         return content, content_soup
 
 
@@ -139,27 +134,41 @@ def get_nextpage(soup):
 def get_one_book(book_title, url):
     num = 0
     read_url = get_content_url(url)
-    with open('./%s.txt'%book_title, 'a', encoding='utf-8') as f:
-        while read_url:
-            content_url = root_url + read_url[1:]
-            content, content_soup = get_one_page_content(content_url)
-            print(content)
-            if content != None:
-                f.write(content)
-                print("page %d success"%num)
-            else:
-                print("page %d fail"%num)
-            if content_soup != None:
-                read_url = get_nextpage(content_soup)
-                num += 1
-            else:
-                continue
+    if read_url != None:
+        with open(save_path + '%s.txt'%book_title, 'a', encoding='utf-8') as f:
+            while read_url:
+                content_url = root_url + read_url[1:]
+                content, content_soup = get_one_page_content(content_url)
+                if content != None:
+                    f.write(content)
+                    print("%s page %d success"%(book_title, num))
+                else:
+                    print("%s page %d fail"%(book_title, num))
+                if content_soup != None:
+                    read_url = get_nextpage(content_soup)
+                    num += 1
+                else:
+                    continue
         print("%s finish!"%book_title)
+    else:
+        print("get %s fail"%book_title)
+
+
+# use multithread again
+def get_all_books():
+    with open('./title_url2.csv', 'r', encoding='utf-8', errors='ignore') as f:
+        all_title_urls = pd.read_csv(f)
+    with ThreadPoolExecutor(500) as t:
+        for _, value in all_title_urls[101:601].iterrows():
+            book_title, book_url = value['title'], value['url']
+            t.submit(get_one_book, book_title, book_url)
+    print("\nAll books downloaded!")
 
 
 if __name__ == "__main__":
     source_url = "https://m.moyanxsw.com/quanben/sort/"
     root_url = "https://m.moyanxsw.com/"
-    save_path = ""
+    save_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
     # get_all_title_url_list(source_url)
-    get_one_book("灵兽养殖笔记", "https://m.moyanxsw.com/lingshouyangshibiji/")
+    # get_one_book("灵兽养殖笔记", "https://m.moyanxsw.com/lingshouyangshibiji/")
+    get_all_books()
