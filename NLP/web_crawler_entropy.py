@@ -45,23 +45,23 @@ def get_one_page_title_url_list(url, not_add_csv=True):
                 title = title.replace(i, '')
             if len(title) > 0 and len(book_url) > 0:
                 title_list.append(title)
-                url_list.append(book_url)
+                url_list.append(root_url + book_url[1:])
         title_url = dict(zip(title_list, url_list))
         title_url_pd = pd.DataFrame(list(title_url.items()), columns=["title", "url"])
-        with open('./title_url2.csv', mode='a', encoding='utf_8_sig', errors='ignore', newline='') as f:         
+        with open('./title_url3.csv', mode='a', encoding='utf_8_sig', errors='ignore', newline='') as f:         
             title_url_pd.to_csv(f, index=False, header=not_add_csv)
-        print(url + "success!")
+        print(url + " success!")
         
         return title_url
     else:
         return {}
 
 
-def get_all_title_url_list(root_url):
-    title_url = get_one_page_title_url_list(root_url, not_add_csv=True)
+def get_all_title_url_list(url):
+    title_url = get_one_page_title_url_list(url, not_add_csv=True)
     with ThreadPoolExecutor(50) as t:
         for page_number in range(2, 825):
-            t.submit(get_one_page_title_url_list, root_url + str(page_number), False)
+            t.submit(get_one_page_title_url_list, url + str(page_number), False)
     print("\ndone!")
     
 
@@ -102,29 +102,64 @@ def get_all_title_url_list(root_url):
 #     pass
 
 
-def get_one_page_content(url, book_title):
-    soup = get_html(url)
+def get_content_url(title_url):
+    soup = get_html(title_url)
     if soup == None:
+        print("get book fail")
+
         return None
     else:
-        content = soup.find(name='div', attrs='aQHuOqEcj').text
-        with open('./%s.txt'%book_title, 'a', encoding='utf-8') as f:
-            f.write(content)
+        read_url = soup.find(name='li', attrs='eUWPgsxrR').find('a')['href']
+
+        return read_url
+
+'''
+<a href="javascript:void(0);">没有了</a>
+'''
+def get_one_page_content(url):
+    content_soup = get_html(url)
+    print(content_soup)
+    if content_soup == None:
+        print("get content fail")
+        return None, None
+    else:
+        content = content_soup.find(name='div', attrs='aQHuOqEcj').text
             
-        return content
+        return content, content_soup
 
 
-def get_nextpage(url):
-    pass
+def get_nextpage(soup):
+    next_url = soup.find('li', 'wEamlypTs').find('a')['href']
+    if 'javascript:void(0)' in next_url:
+        return False
+    else:
+        return next_url
 
 
-def save_txt(root_url, first_url, save_path):
-    pass
+def get_one_book(book_title, url):
+    num = 0
+    read_url = get_content_url(url)
+    with open('./%s.txt'%book_title, 'a', encoding='utf-8') as f:
+        while read_url:
+            content_url = root_url + read_url[1:]
+            content, content_soup = get_one_page_content(content_url)
+            print(content)
+            if content != None:
+                f.write(content)
+                print("page %d success"%num)
+            else:
+                print("page %d fail"%num)
+            if content_soup != None:
+                read_url = get_nextpage(content_soup)
+                num += 1
+            else:
+                continue
+        print("%s finish!"%book_title)
 
 
 if __name__ == "__main__":
-    root_url = "https://m.moyanxsw.com/quanben/sort/"
-    first_url = "https://m.moyanxsw.com/"
+    source_url = "https://m.moyanxsw.com/quanben/sort/"
+    root_url = "https://m.moyanxsw.com/"
     save_path = ""
-    # get_all_title_url_list2(root_url)
-    # save_txt(root_url, first_url, save_path)
+    # get_all_title_url_list(source_url)
+    get_one_book("灵兽养殖笔记", "https://m.moyanxsw.com/lingshouyangshibiji/")
