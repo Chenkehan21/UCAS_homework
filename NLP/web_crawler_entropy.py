@@ -5,8 +5,6 @@ import pandas as pd
 from zhon.hanzi import punctuation as cn_punc
 from string import punctuation as en_punc
 from concurrent.futures import ThreadPoolExecutor
-import asyncio
-import aiohttp
 
 
 @retry(stop_max_attempt_number=10)
