@@ -62,43 +62,6 @@ def get_all_title_url_list(url):
         for page_number in range(2, 825):
             t.submit(get_one_page_title_url_list, url + str(page_number), False)
     print("\ndone!")
-    
-
-# def get_all_title_url_list(root_url):
-#     page_number = 1
-#     page_url = root_url
-#     all_title_url = {}
-#     new_page_title_url = get_one_page_title_url_list(page_url)
-#     if new_page_title_url != {}:
-#         print("successfully get page %d"%page_number)
-#     all_title_url.update(new_page_title_url)
-#     while True:
-#         last_page_title_url = new_page_title_url
-#         page_number += 1
-#         page_url = root_url + str(page_number) + '/'
-#         new_page_title_url = get_one_page_title_url_list(page_url)
-#         if new_page_title_url != {}:
-#             print("successfully get page %d"%page_number)
-#         '''
-#         Judge whether reach the final page.
-#         method: if reach the final + 1 page, we will get the same thing. So we can 
-#         check whether new page title urls are the same with last page title urls
-#         '''
-#         if new_page_title_url != {} and last_page_title_url != {} \
-#             and all(x in last_page_title_url.keys() for x in new_page_title_url.keys()):
-#             print("reach final page")
-#             break
-#         all_title_url.update(new_page_title_url)
-
-#         if page_number % 10 == 0:
-#             with open('./all_title_list_%d.pkl'%page_number, "wb") as f:
-#                 pickle.dump(all_title_url, f)
-
-#     return all_title_url
-
-
-# def get_book_content_list():
-#     pass
 
 
 def get_content_url(title_url):
@@ -168,5 +131,4 @@ if __name__ == "__main__":
     root_url = "https://m.moyanxsw.com/"
     save_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
     # get_all_title_url_list(source_url)
-    # get_one_book("灵兽养殖笔记", "https://m.moyanxsw.com/lingshouyangshibiji/")
     get_all_books()
