@@ -131,4 +131,4 @@ if __name__ == "__main__":
     root_url = "https://m.moyanxsw.com/"
     save_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
     # get_all_title_url_list(source_url)
-    get_all_books()
+    # get_all_books()

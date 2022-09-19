@@ -12,17 +12,23 @@ import time
 all_content = ''
 
 
-def get_file(path, file_name):
+def get_file(path, file_name, en_cn='cn'):
     file_path = os.path.join(path, file_name)
     with open(file_path, 'r', encoding='utf-8') as f:
         contents = f.readlines()
-    time.sleep(2)
+    
     # clean file
     res = ''
     for content in contents:
         tmp = re.sub("[{}]+".format(punc), "", content) # remove punctutation
-        clean_content = re.sub(r'\s+', '', tmp) # remove white space
-        pure_words = re.sub(r'[0-9]+', '', clean_content)
+        remove_white_spaces = re.sub(r'[\r|\n|\t]', '', tmp) # remove white space
+        pure_words = re.sub(r'[0-9]+', '', remove_white_spaces)
+        if en_cn == 'en':
+            lower_case = pure_words.lower()
+            pure_words = re.sub(r'[^a-z^\s]', '', lower_case)
+        elif en_cn == 'cn':
+            pure_words = re.sub(r'[^\u4e00-\u9fa5]', '', pure_words)
+
         res += pure_words
         # res += clean_content
     global all_content 
@@ -41,24 +47,24 @@ def get_file(path, file_name):
 #     return res.strip()
 
 
-def append_data(path, first_append, n = 2):
+def append_data(path, first_append, n = 2, en_cn='cn'):
     all_contents = ''
     if first_append:
         with ThreadPoolExecutor(n) as t:
             for file_name in all_file_names[0 : n]:
-                print(file_name)
-                t.submit(get_file, path, file_name)
+                # print(file_name)
+                t.submit(get_file, path, file_name, en_cn)
                 # content = get_file(path, file_name)
                 # clean_content = data_clean(content.result)
                 # all_contents += clean_content
     else:
         with ThreadPoolExecutor(n) as t:
             for file_name in all_file_names[n - 2 : n]:
-                t.submit(get_file, path, file_name)
+                t.submit(get_file, path, file_name, en_cn)
                 # print(file_name)
                 # clean_content = data_clean(content)
                 # all_contents += clean_content
-
+    print("n: ", n)
 
     return all_contents
 
@@ -73,16 +79,17 @@ def calculate_cn_word_entropy(num_filesize=1, en_cn="cn"):
         letters_2mb = 2000000
         words_per_book_avg = 743362
     num_books = int(2 + num_filesize * letters_2mb / words_per_book_avg)
-    end_size = letters_2mb * num_filesize
-    append_data(root_path, first_append=True, n=num_books)
-    while end_size - len(all_content) > 300:
+    end_size = int(letters_2mb * num_filesize)
+    append_data(root_path, first_append=True, n=num_books, en_cn=en_cn)
+    while end_size - len(all_content) > 300 and num_books < len(all_file_names):
         num_books += 2
-        append_data(root_path, first_append=False, n=num_books)
+        append_data(root_path, first_append=False, n=num_books, en_cn=en_cn)
     content = all_content[:end_size]
     word_num_table = Counter(content)
-    # print(word_num_table)
+    # print(word_num_table, len(word_num_table))
     total = sum(list(word_num_table.values()))
     word_probability = {k: v / total for k, v in word_num_table.items()}
+    # print(word_probability, len(word_probability))
     p = np.array(list(word_probability.values()))
     log_p = np.log2(p)
     H = -np.dot(p, log_p.reshape((-1, 1))).item()
@@ -98,16 +105,21 @@ def calculate_entropy_different_file_size(num_filesize=20):
         all_H.append(calculate_cn_word_entropy(file_size))
     print(all_H)
 
+    return all_H
+
 
 if __name__ == "__main__":
-    root_path = "D:\\corpus_en"
+    # root_path = "/mnt/d/UCAS/web_crawler/english_books2/"
+    root_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
     save_path = "/mnt/d/UCAS/web_crawler/"
     punc = cn_punc + en_punc
     all_file_names = os.listdir(root_path)
     # calculate_entropy_different_file_size(num_filesize=15)
     # calculate_cn_word_entropy(200)
     # get_file(root_path, all_file_names[0])
-    t = time.time()
-    append_data(root_path, True, 15)
-    t2 = time.time()
-    print(all_content, len(all_content), t2 - t)
+    # t = time.time()
+    # append_data(root_path, True, 150)
+    # t2 = time.time()
+    # print(len(all_content), t2 - t)
+    # H = calculate_cn_word_entropy(num_filesize=5, en_cn="cn")
+    calculate_entropy_different_file_size(20)
