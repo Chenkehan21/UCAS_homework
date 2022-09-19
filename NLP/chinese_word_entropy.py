@@ -6,23 +6,27 @@ from zhon.hanzi import punctuation as cn_punc
 from string import punctuation as en_punc
 import re
 from concurrent.futures import ThreadPoolExecutor
+import time
+
+
+all_content = ''
 
 
 def get_file(path, file_name):
     file_path = os.path.join(path, file_name)
-    with open(file_path, 'r') as f:
+    with open(file_path, 'r', encoding='utf-8') as f:
         contents = f.readlines()
-    
+    time.sleep(2)
     # clean file
     res = ''
     for content in contents:
         tmp = re.sub("[{}]+".format(punc), "", content) # remove punctutation
         clean_content = re.sub(r'\s+', '', tmp)
         res += clean_content
+    global all_content 
+    all_content += res.strip()
 
     return res.strip()
-
-    return res
 
 
 # def data_clean(contents):
@@ -38,20 +42,19 @@ def get_file(path, file_name):
 def append_data(path, first_append, n = 2):
     all_contents = ''
     if first_append:
-        with ThreadPoolExecutor(n) as t:
+        with ThreadPoolExecutor(16) as t:
             for file_name in all_file_names[0 : n]:
-                # print(file_name)
-                content = t.submit(get_file, path, file_name)
-                print(content, content.result)
+                print(file_name)
+                t.submit(get_file, path, file_name)
                 # content = get_file(path, file_name)
                 # clean_content = data_clean(content.result)
-                all_contents += clean_content
+                # all_contents += clean_content
     else:
         for file_name in all_file_names[n - 2 : n]:
             # print(file_name)
             content = get_file(path, file_name)
             # clean_content = data_clean(content)
-            all_contents += clean_content
+            # all_contents += clean_content
 
 
     return all_contents
@@ -87,9 +90,14 @@ def calculate_entropy_different_file_size(num_filesize=20):
 
 
 if __name__ == "__main__":
-    root_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
+    root_path = "D:\\corpus"
     save_path = "/mnt/d/UCAS/web_crawler/"
     punc = cn_punc + en_punc
     all_file_names = os.listdir(root_path)
     # calculate_entropy_different_file_size(num_filesize=15)
-    calculate_cn_word_entropy(200)
+    # calculate_cn_word_entropy(200)
+    # get_file(root_path, all_file_names[0])
+    t = time.time()
+    append_data(root_path, True, 16)
+    t2 = time.time()
+    print(all_content, len(all_content), t2 - t)
