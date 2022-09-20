@@ -2,7 +2,7 @@ import numpy as np
 
 
 def corr1d(x, k):
-    padding = np.array([0] * int((len(k) - 1) / 2))
+    padding = np.array([0] * (len(k) - 1))
     padded_x = np.hstack([padding, x, padding])
     k_size = len(k)
     res = []
@@ -15,8 +15,8 @@ def corr1d(x, k):
 def corr2d(x, k):
     h, w = x.shape
     m, n = k.shape
-    h_padding = int((m - 1) / 2)
-    w_padding = int((n - 1) / 2)
+    h_padding = (m - 1)
+    w_padding = (n - 1)
     padded_x = np.pad(x, ((h_padding, h_padding), (w_padding, w_padding)), 'constant', constant_values=(0, 0))
     print("\npadded_x:\n", padded_x)
     h_y, w_y = h - m + 1 + 2 * h_padding, w - n + 1 + 2 * w_padding

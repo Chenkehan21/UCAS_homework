@@ -7,6 +7,7 @@ from string import punctuation as en_punc
 import re
 from concurrent.futures import ThreadPoolExecutor
 import time
+import matplotlib.pyplot as plt
 
 
 all_content = ''
@@ -77,8 +78,9 @@ def calculate_cn_word_entropy(num_filesize=1, en_cn="cn"):
         words_per_book_avg = 743362
     elif en_cn == "en":
         letters_2mb = 2000000
-        words_per_book_avg = 743362
+        words_per_book_avg = 603448
     num_books = int(2 + num_filesize * letters_2mb / words_per_book_avg)
+    # print("num_books: ", num_books)
     end_size = int(letters_2mb * num_filesize)
     append_data(root_path, first_append=True, n=num_books, en_cn=en_cn)
     while end_size - len(all_content) > 300 and num_books < len(all_file_names):
@@ -98,19 +100,30 @@ def calculate_cn_word_entropy(num_filesize=1, en_cn="cn"):
     return H
 
 
-def calculate_entropy_different_file_size(num_filesize=20):
+def calculate_entropy_different_file_size(num_filesize=20, en_cn='cn'):
     all_H = []
     for file_size in range(1, num_filesize):
         print(file_size)
-        all_H.append(calculate_cn_word_entropy(file_size))
+        all_H.append(calculate_cn_word_entropy(file_size, en_cn=en_cn))
     print(all_H)
 
     return all_H
 
 
+def plot_result(all_H, title):
+    num_H = len(all_H)
+    x = list(range(2, 2 * num_H + 1, 2))
+    plt.plot(x, all_H)
+    plt.grid()
+    plt.title(title)
+    plt.xlabel("file size(MB)")
+    plt.ylabel("entropy")
+    plt.show()
+
+
 if __name__ == "__main__":
-    # root_path = "/mnt/d/UCAS/web_crawler/english_books2/"
-    root_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
+    root_path = "/mnt/d/UCAS/web_crawler/english_books2/"
+    # root_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
     save_path = "/mnt/d/UCAS/web_crawler/"
     punc = cn_punc + en_punc
     all_file_names = os.listdir(root_path)
@@ -122,4 +135,5 @@ if __name__ == "__main__":
     # t2 = time.time()
     # print(len(all_content), t2 - t)
     # H = calculate_cn_word_entropy(num_filesize=5, en_cn="cn")
-    calculate_entropy_different_file_size(20)
+    all_H = calculate_entropy_different_file_size(30, en_cn='en')
+    plot_result(all_H, "English Entropy")
