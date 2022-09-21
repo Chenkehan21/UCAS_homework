@@ -91,6 +91,10 @@ def calculate_cn_word_entropy(num_filesize=1, en_cn="cn"):
     # print(word_num_table, len(word_num_table))
     total = sum(list(word_num_table.values()))
     word_probability = {k: v / total for k, v in word_num_table.items()}
+    word_probability_list = sorted(word_probability.items(), key=lambda x: x[1], reverse=True)
+    for i, value in enumerate(word_probability_list):
+        if i <= 30:
+            print(value)
     # print(word_probability, len(word_probability))
     p = np.array(list(word_probability.values()))
     log_p = np.log2(p)
@@ -122,8 +126,8 @@ def plot_result(all_H, title):
 
 
 if __name__ == "__main__":
-    root_path = "/mnt/d/UCAS/web_crawler/english_books2/"
-    # root_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
+    # root_path = "/mnt/d/UCAS/web_crawler/english_books2/"
+    root_path = "/mnt/d/UCAS/web_crawler/chinese_novels/"
     save_path = "/mnt/d/UCAS/web_crawler/"
     punc = cn_punc + en_punc
     all_file_names = os.listdir(root_path)
@@ -134,6 +138,6 @@ if __name__ == "__main__":
     # append_data(root_path, True, 150)
     # t2 = time.time()
     # print(len(all_content), t2 - t)
-    # H = calculate_cn_word_entropy(num_filesize=5, en_cn="cn")
-    all_H = calculate_entropy_different_file_size(30, en_cn='en')
-    plot_result(all_H, "English Entropy")
+    H = calculate_cn_word_entropy(num_filesize=30, en_cn="cn")
+    # all_H = calculate_entropy_different_file_size(30, en_cn='cn')
+    # plot_result(all_H, "English Entropy")
