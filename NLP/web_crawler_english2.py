@@ -100,4 +100,4 @@ if __name__ == "__main__":
     top_url = "https://www.gutenberg.org/browse/scores/top"
     save_path = "/mnt/d/UCAS/web_crawler/english_books2/"
     # get_all_top100(top_url)
-    get_all_content()
+    # get_all_content()
