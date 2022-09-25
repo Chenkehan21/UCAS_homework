@@ -73,7 +73,7 @@ def main(test_times=10):
     for _ in range(test_times):
         error = test(mu1, sigma1, mu2, sigma2, N)
         all_errors.append(error)
-    
+    print(all_errors)
     all_errors = np.array(all_errors)
     avg = np.mean(all_errors, axis=0)
     std = np.std(all_errors, axis=0)
