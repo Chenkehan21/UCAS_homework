@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def get_data(path, w1, w2):
@@ -16,9 +17,9 @@ def get_data(path, w1, w2):
     
     #normalized augmented feature vector
     data = np.concatenate([data1, -data2], axis=1)
-    data = np.concatenate([data, np.array([[1]* 2 * len(data1.T)])], axis=0)
+    data = np.concatenate([data, np.array([[1] * len(data1.T) + [-1] * len(data1.T)])], axis=0)
     
-    return data    
+    return data, data1, data2
 
 
 def calculate_Y_k(a, y):
@@ -37,6 +38,7 @@ def do_batch_perception(data, a=np.array([[0., 0., 0.]]), eta=1, k=0):
         # k = (k + 1) % n
         Y_k = calculate_Y_k(a, data)
         if len(Y_k) == 0:
+            print("find solution")
             break
         gradient = np.sum(Y_k, axis=1)
         a += eta * gradient
@@ -44,12 +46,32 @@ def do_batch_perception(data, a=np.array([[0., 0., 0.]]), eta=1, k=0):
         
     return a, iteration_times
 
+
+def plot_result(a, w1, w2, label1, label2, name):
+    k = - a[0] / a[1]
+    b = -a[2] / a[1]
+    start = min(int(np.min(w1[0])), int(np.min(w2[0]))) - 1
+    end = max(int(np.max(w1[0])), int(np.max(w2[0]))) + 1
+    x = np.arange(start, end, 0.01)
+    y = [k * i + b for i in x]
+    plt.plot(x, y, c='r')
+    plt.scatter(w1[0], w1[1], label=label1)
+    plt.scatter(w2[0], w2[1], label=label2)
+    plt.title(name)
+    plt.grid()
+    plt.legend()
+    plt.show()
+
+
 if __name__ == "__main__":
-    path = 'D:\\UCAS_homework\\PRML\\homework3\\data.csv'   
-    data1 = get_data(path, 1, 2)
-    a1, iteration_times1 = do_batch_perception(data1, a=np.array([[0., 0., 0.]]), eta=1, k=0)
+    path = './data.csv'   
+    data1, w1, w2 = get_data(path, 1, 2)
+    a1, iteration_times1 = do_batch_perception(data1, a=np.array([[0., 0., 0.]]), eta=0.5, k=0)
     print(a1, iteration_times1)
     
-    data2 = get_data(path, 3, 2)
+    data2, w3, w2 = get_data(path, 3, 2)
     a2, iteration_times2 = do_batch_perception(data2, a=np.array([[0., 0., 0.]]), eta=1, k=0)
     print(a2, iteration_times2)
+    
+    plot_result(a1[0], w1, w2, 'w1', 'w2', 'Batch Perception')
+    plot_result(a2[0], w3, w2, 'w3', 'w2', 'Batch Perception')
