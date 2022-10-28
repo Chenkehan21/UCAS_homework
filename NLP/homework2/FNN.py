@@ -1,9 +1,11 @@
-from turtle import forward
 import torch
 import torch.nn as nn
-import tqdm
-from utils import trainer
-from NLP.homework2.read_long_sequence import load_data_iter
+from tqdm import tqdm
+from read_long_sequence import load_data_iter
+from torch.utils.tensorboard import SummaryWriter
+
+
+writer = SummaryWriter('./FNNlog')
 
 
 class FNNLM(nn.Module):
@@ -14,15 +16,6 @@ class FNNLM(nn.Module):
         self.d = d # dimension of a word's feature 
         self.step = step
         self.hidden = hidden
-        
-        # self.net = nn.Sequential(
-        #     nn.Embedding(self.v, self.d), # shape: [batch size, step, d]
-        #     nn.Flatten(), # shape: [batch size, step * d]
-        #     nn.Linear(self.step * self.d, 50), nn.Tanh(), # shape: [batch size, 50]
-        #     nn.Linear(512, 512), nn.ReLU(),
-        #     nn.Linear(512, 512), nn.ReLU(),
-        #     nn.Linear(512, self.step) # nn.CrossEntropy() has softmax
-        # )
         
         self.C = nn.Embedding(self.v, self.d) # shape: [batch size, step, d]
         self.flat = nn.Flatten()# shape: [batch size, step * d]
@@ -47,35 +40,56 @@ def init_weights(layer):
         nn.init.normal_(layer.weight, mean=0, std=0.01)
         
         
-def train(net, data_iter, optimizer, loss_func, epoches, device):
-    total_perplexity = []
-    for epoch in range(epoches):
-        net.train()
-        total_loss, n = 0, 0
-        for feature, label in tqdm(data_iter):
-            feature, label = feature.to(device), label.to(device)
-            y_hat = net(feature)
-            loss = loss_func(y_hat, label)
-            total_loss += loss * label.numel()
-            n += label.numel()
-            loss.backward()
-            optimizer.zero_grad()
-            optimizer.step()
-        perplexity = torch.exp(total_loss / n).item()
-        total_perplexity.append(perplexity)
-        print("epoch: %d|perplexity: %.3f" % (epoch + 1, perplexity))
+def run_one_epoch(net, data_iter, optimizer, loss_func, device):
+    total_loss, n = 0, 0 # loss in one epoch
+    for feature, label in data_iter:
+        feature, label = feature.to(device), label.to(device)
+        y_hat = net(feature)
+        loss = loss_func(y_hat, label)
+        total_loss += loss * label.numel() # label.numel() = batchsize, loss in one batch
+        n += label.numel()
+        loss.backward()
+        optimizer.zero_grad()
+        optimizer.step()
+    perplexity = torch.exp2(total_loss / n).item() # total_loss / n is the average cross entropy loss of n grams
     
-    
-def main(batch_size=64, step=256, lr=1e-1, epoches=20):
+    return perplexity    
+        
+        
+def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_data_iter, test_data_iter = load_data_iter(batch_size=batch_size, setp=step, use_FNNML=True, use_random_sample=False)
+    batch_size = 128
+    step = 8
+    lr = 1e-3
+    best_ppl = 1e10
+    d = 100 # look up table feature size
+    
+    train_data_iter, val_data_iter,_ , _, _ = load_data_iter(batch_size=batch_size, step=step, use_FNNML=True, use_random_sample=False)
     v = len(train_data_iter.vocab)
-    d = 50
     net = FNNLM(v, d, step).to(device)
     loss_func = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr)
     
-    train(net, train_data_iter, optimizer, loss_func, epoches, device)
+    total_perplexity_train, total_perplexity_val = [], []
+    epoch = 0
+    while True:
+        epoch += 1
+        net.train()
+        train_perplexity = run_one_epoch(net, train_data_iter, optimizer, loss_func, device)
+        total_perplexity_train.append(train_perplexity)
+        if train_perplexity < best_ppl:
+            best_ppl = train_perplexity
+            torch.save(net.state_dict(), 'FNN_params_%.3f.pth'%best_ppl)
+        
+        # validation
+        net.eval()
+        val_perplexity = run_one_epoch(net, val_data_iter, optimizer, loss_func, device)
+        total_perplexity_val.append(val_perplexity)
+        print("epoch: %d|train ppl: %.3f|validation ppl:" % (epoch, train_perplexity, val_perplexity))
+        writer.add_scalar('Perplexity/train', train_perplexity, epoch)
+        writer.add_scalar('Perplexity/validation', val_perplexity, epoch)
+        writer.add_scalar('train_val',{'train': train_perplexity,
+                                       'val': val_perplexity}, epoch)
     
 
 if __name__ == "__main__":
