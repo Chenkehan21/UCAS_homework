@@ -41,8 +41,6 @@ def run_one_epoch(net, data_iter, optimizer, loss_func, batch_size, device):
         feature, label = feature.to(device), label.to(device)
         y_hat = net(feature)
         loss = loss_func(y_hat, label)
-        print("loss: ", loss)
-        print("label.numel: ", label.numel())
         total_loss += loss * label.numel() # label.numel() = batchsize, loss in one batch
         n += label.numel()
         loss.backward()
