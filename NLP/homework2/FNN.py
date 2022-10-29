@@ -35,7 +35,6 @@ class FNNLM(nn.Module):
         
         return res
         
-        
 def run_one_epoch(net, data_iter, optimizer, loss_func, device):
     total_loss, n = 0, 0 # loss in one epoch
     for feature, label in tqdm(data_iter, ncols=80):
@@ -58,7 +57,7 @@ def main():
     step = 7
     lr = 1e-3
     best_ppl = 1e10
-    d = 100 # look up table feature size
+    d = 256 # look up table feature size
     
     # train_data_iter, val_data_iter,_ , _, _ = load_data_iter(batch_size=batch_size, step=step, use_FNNML=True, use_random_sample=False)
     trainloader, valloader, testloader, train_vocab, val_vocab, test_vocab = load_data(path='././data_prepare/', step=step, batch_size=batch_size, loader=FNNloader)
@@ -77,7 +76,7 @@ def main():
         total_perplexity_train.append(train_perplexity)
         if train_perplexity < best_ppl:
             best_ppl = train_perplexity
-            torch.save(net.state_dict(), 'FNN_params_%.3f.pth'%best_ppl)
+            torch.save(net.state_dict(), './model_weights/FNN_params_%.3f.pth'%best_ppl)
         
         # validation
         net.eval()
