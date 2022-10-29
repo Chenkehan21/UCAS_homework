@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 from tqdm import tqdm
-from read_long_sequence import load_data_iter
+from end2end_dataload import load_data_iter
+from prepare_dataloader import load_data, FNNloader
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -33,24 +34,19 @@ class FNNLM(nn.Module):
         res = res2 + res3
         
         return res
-    
-
-def init_weights(layer):
-    if type(layer) == nn.Linear:
-        nn.init.normal_(layer.weight, mean=0, std=0.01)
         
         
 def run_one_epoch(net, data_iter, optimizer, loss_func, device):
     total_loss, n = 0, 0 # loss in one epoch
-    for feature, label in data_iter:
+    for feature, label in tqdm(data_iter, ncols=80):
         feature, label = feature.to(device), label.to(device)
         y_hat = net(feature)
         loss = loss_func(y_hat, label)
         total_loss += loss * label.numel() # label.numel() = batchsize, loss in one batch
         n += label.numel()
         loss.backward()
-        optimizer.zero_grad()
         optimizer.step()
+        optimizer.zero_grad()
     perplexity = torch.exp2(total_loss / n).item() # total_loss / n is the average cross entropy loss of n grams
     
     return perplexity    
@@ -59,14 +55,15 @@ def run_one_epoch(net, data_iter, optimizer, loss_func, device):
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     batch_size = 128
-    step = 8
+    step = 7
     lr = 1e-3
     best_ppl = 1e10
     d = 100 # look up table feature size
     
-    train_data_iter, val_data_iter,_ , _, _ = load_data_iter(batch_size=batch_size, step=step, use_FNNML=True, use_random_sample=False)
-    v = len(train_data_iter.vocab)
-    net = FNNLM(v, d, step).to(device)
+    # train_data_iter, val_data_iter,_ , _, _ = load_data_iter(batch_size=batch_size, step=step, use_FNNML=True, use_random_sample=False)
+    trainloader, valloader, testloader, train_vocab, val_vocab, test_vocab = load_data(path='././data_prepare/', step=step, batch_size=batch_size, loader=FNNloader)
+    v = len(train_vocab)
+    net = FNNLM(v, d, step-1).to(device)
     loss_func = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr)
     
@@ -75,7 +72,8 @@ def main():
     while True:
         epoch += 1
         net.train()
-        train_perplexity = run_one_epoch(net, train_data_iter, optimizer, loss_func, device)
+        print("train:")
+        train_perplexity = run_one_epoch(net, trainloader, optimizer, loss_func, device)
         total_perplexity_train.append(train_perplexity)
         if train_perplexity < best_ppl:
             best_ppl = train_perplexity
@@ -83,12 +81,13 @@ def main():
         
         # validation
         net.eval()
-        val_perplexity = run_one_epoch(net, val_data_iter, optimizer, loss_func, device)
+        print("validate:")
+        val_perplexity = run_one_epoch(net, valloader, optimizer, loss_func, device)
         total_perplexity_val.append(val_perplexity)
-        print("epoch: %d|train ppl: %.3f|validation ppl:" % (epoch, train_perplexity, val_perplexity))
+        print("epoch: %d|train ppl: %.3f|validation ppl: %.3f" % (epoch, train_perplexity, val_perplexity))
         writer.add_scalar('Perplexity/train', train_perplexity, epoch)
         writer.add_scalar('Perplexity/validation', val_perplexity, epoch)
-        writer.add_scalar('train_val',{'train': train_perplexity,
+        writer.add_scalars('train_val',{'train': train_perplexity,
                                        'val': val_perplexity}, epoch)
     
 
