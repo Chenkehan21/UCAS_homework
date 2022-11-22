@@ -78,7 +78,7 @@ class Matrix():
     def Householder_reduction(self):
         R = np.eye(self.n)
         tmp = self.A.copy()
-        for i in range(self.n - 1):
+        for _ in range(self.n - 1):
             x = tmp[:, 0]
             x_2norm = self.calculate_2norm(x)
             I = np.eye(x.shape[0])
@@ -90,24 +90,72 @@ class Matrix():
             R_i[self.n - R_i_hat.shape[0]:, self.n - R_i_hat.shape[1]:] = R_i_hat
             R = np.dot(R_i, R)
             T = np.dot(R, self.A)
-            tmp = np.delete(T, 0, axis=0)
-            tmp = np.delete(T, 0, axis=1)
+            tmp = np.dot(R_i_hat, tmp)
+            tmp = np.delete(tmp, 0, axis=0)
+            tmp = np.delete(tmp, 0, axis=1)
 
         Q = R.T
         R = T
         
         return Q, R
-        
     
     def Givens_reduction(self):
-        pass
-    
-    def solve_equation(self):
-        pass
-    
+        tmp = self.A.copy()
+        
+        P = np.eye(self.n)
+        for _ in range(self.n - 1):
+            x = tmp[:, 0]
+            for i in range(1, x.shape[0]):
+                d = math.sqrt(x[0]**2 + x[i]**2)
+                c = x[0] / d
+                s = x[i] / d
+                P_i_hat = np.eye(x.shape[0])
+                P_i_hat[0, 0] = c
+                P_i_hat[i, 0] = -s
+                P_i_hat[0, i] = s
+                P_i_hat[i, i] = c
+                P_i = np.eye(self.n)
+                P_i[self.n - x.shape[0]:, self.n - x.shape[0]:] = P_i_hat
+                P = np.dot(P_i, P)
+                T = np.dot(P, self.A)
+                tmp = np.dot(P_i_hat, tmp)
+                x = tmp[:, 0]
+            tmp = np.delete(tmp, 0, axis=0)
+            tmp = np.delete(tmp, 0, axis=1)
+            
+        Q = P.T
+        R = T
+        
+        return Q, R
+            
+    def solve_equation(self, Q, R):
+        # Ax = b => QRx = b => Rx = (Q.T)b
+        b = np.dot(Q.T, self.b)
+        res = []
+        res.append(b[-1] / R[-1, -1])
+        for i in range(self.n - 2, -1, -1):
+            tmp = b[i]
+            for j, x in enumerate(res):
+                tmp -= x * R[i, self.n - 1- j]
+            res.append(tmp / R[i, i])
+        res = [x.item() for x in res]
+        res.reverse()
+        
+        return res
+            
     def calculate_determinant(self):
-        pass
+        if self.A.shape == (2, 2):
+            return self.A[0, 0] * self.A[1, 1] - self.A[0, 1] * self.A[1, 1]
+        else:
+            res = 0
+            for i in range(self.A.shape[0]):
+                tmp = self.A.copy()
+                alpha = (-1)**i * self.A[0, i]
+                tmp = np.delete(tmp, i, axis=0)
+                tmp = np.delete(tmp, 0, axis=1)
+                res += alpha * self.calculate_determinant(tmp)
 
+            return res
 
 def main():
     A, b = get_matrix()
@@ -136,5 +184,5 @@ def main():
     print("det(A): ", determinant)
         
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
