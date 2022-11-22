@@ -35,8 +35,11 @@ class Matrix():
         A = self.A.copy()
         row = 0
         while row < self.n - 1:
-            pivot_pos = (A[row] != 0).argmax(axis=0)
-            pivot = A[row, pivot_pos]
+            if row != 0:
+                pivot_pos = (A[row] != 0).argmax(axis=0)
+                pivot = A[row, pivot_pos]
+            else:
+                pivot = A[0, 0]
             if pivot == 0:
                 print("No LU_decomposition!")
                 return None, None
@@ -52,8 +55,8 @@ class Matrix():
         Q = np.zeros((self.n, self.n))
         R = np.zeros((self.n, self.n))
         cnt = 0 # set a counter to count how many vectors have been done.
-        
-        x1 = self.A[:,0]
+        A = self.A.copy()
+        x1 = A[:,0]
         # r1 = np.linalg.norm(x1, ord=2)
         r1 = self.calculate_2norm(x1)
         R[0, 0] = r1
@@ -62,7 +65,7 @@ class Matrix():
         cnt += 1
         
         for col in range(1, self.n):
-            x = self.A[:, col] # x.shape = (self.n,)
+            x = A[:, col] # x.shape = (self.n,)
             for i in range(cnt):
                 r = np.dot(x.T, Q[:, i])
                 R[i, col] = r
@@ -143,14 +146,14 @@ class Matrix():
         
         return res
             
-    def calculate_determinant(self):
-        if self.A.shape == (2, 2):
-            return self.A[0, 0] * self.A[1, 1] - self.A[0, 1] * self.A[1, 1]
+    def calculate_determinant(self, x):
+        if x.shape == (2, 2):
+            return x[0, 0] * x[1, 1] - x[0, 1] * x[1, 0]
         else:
             res = 0
-            for i in range(self.A.shape[0]):
-                tmp = self.A.copy()
-                alpha = (-1)**i * self.A[0, i]
+            for i in range(x.shape[0]):
+                tmp = x.copy()
+                alpha = (-1)**i * x[i, 0]
                 tmp = np.delete(tmp, i, axis=0)
                 tmp = np.delete(tmp, 0, axis=1)
                 res += alpha * self.calculate_determinant(tmp)
@@ -165,26 +168,33 @@ def main():
     decomposition_id = input().split(' ')
     decomposition_id = [eval(item) for item in decomposition_id]
     
-    print("A:\n", A, "\nb:\n", b)
+    print("A:\n", A, "\nb:\n", b , '\n')
     for i in decomposition_id:
         if i == 1:
+            print("\nLU decomposition:\n")
             L, U = matrix.LU_decomposition()
-            print("LU decomposition:\nL:\n", L, "\nU:\n", U)
+            print("L:\n", L, "\nU:\n", U)
         if i == 2:
+            print("\nQR decomposition:\n")
             Q, R = matrix.QR_decomposition()
-            print("QR decomposition:\nQ:\n", Q, "\nR:\n", R)
+            print("Q:\n", Q, "\nR:\n", R)
         if i == 3:
+            print("\nHouseholder reduction:\n")
             Q, R = matrix.Householder_reduction()
-            print("Householder reduction:\nQ:\n", Q, "\nR:\n", R)
+            print("Q:\n", Q, "\nR:\n", R)
         if i == 4:
+            print("\nGivens reduction:\n")
             Q, R = matrix.Givens_reduction()
-            print("Givens reduction:\nQ:\n", Q, "\nR:\n", R)
+            print("Q:\n", Q, "\nR:\n", R)
     
-    x = matrix.solve_equation()
+    x = matrix.solve_equation(Q, R)
     print("Solution of Ax=b is: ", x)
+    b_hat = np.dot(A, np.array(x).reshape(3, -1))
+    print("check Ax:\n", b_hat)
     
-    determinant = matrix.calculate_determinant()
+    determinant = matrix.calculate_determinant(A)
     print("det(A): ", determinant)
+    print("check det(A): ", np.linalg.det(A))
         
 
 if __name__ == "__main__":
