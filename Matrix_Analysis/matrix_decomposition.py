@@ -11,7 +11,7 @@ def get_matrix():
         A_i = [eval(item) for item in a_i]
         A[i] = A_i
         
-    b = input("Please input b seperated by space, it should be the same size of A!").split(' ')
+    b = input("Please input b seperated by space, it should be the same size of A!\n").split(' ')
     b = np.array([eval(item) for item in b]).reshape(n, 1)
     
     return A, b
@@ -32,21 +32,21 @@ class Matrix():
         
     def LU_decomposition(self):
         L = np.eye(self.n)
-        
+        A = self.A.copy()
         row = 0
-        while row < self.n:
-            pivot_pos = (self.A[row] != 0).argmax(axis=0)
-            pivot = self.A[row, pivot_pos]
+        while row < self.n - 1:
+            pivot_pos = (A[row] != 0).argmax(axis=0)
+            pivot = A[row, pivot_pos]
             if pivot == 0:
                 print("No LU_decomposition!")
                 return None, None
             for i in range(self.n - 1 , row, -1):
-                l = self.A[i][row] / pivot
-                self.A[i] -= l * self.A[row]
+                l = A[i][row] / pivot
+                A[i] -= l * A[row]
                 L[i][row] = l
             row += 1
         
-        return L, self.A
+        return L, A
     
     def QR_decomposition(self):
         Q = np.zeros((self.n, self.n))
@@ -160,22 +160,25 @@ class Matrix():
 def main():
     A, b = get_matrix()
     matrix = Matrix(A, b)
-    decomposition_id = input("Please choose the decopmosition you need. You can choose more than one,\
-                             please seperate them by space:\n\
-                             1:LU_decomposition\t\
-                             2:QR_decomposition\t\
-                             3:Householder_reduction\t\
-                             4:Givens_reduction\n").split(' ')
+    print("Please choose the decopmosition you need. You can choose more than one, please seperate them by space:\n")
+    print("1:LU_decomposition\n2:QR_decomposition\n3:Householder_reduction\n4:Givens_reduction\n")
+    decomposition_id = input().split(' ')
     decomposition_id = [eval(item) for item in decomposition_id]
+    
+    print("A:\n", A, "\nb:\n", b)
     for i in decomposition_id:
         if i == 1:
-            res = matrix.LU_decomposition()
+            L, U = matrix.LU_decomposition()
+            print("LU decomposition:\nL:\n", L, "\nU:\n", U)
         if i == 2:
-            res = matrix.QR_decomposition()
+            Q, R = matrix.QR_decomposition()
+            print("QR decomposition:\nQ:\n", Q, "\nR:\n", R)
         if i == 3:
-            res = matrix.Householder_reduction()
+            Q, R = matrix.Householder_reduction()
+            print("Householder reduction:\nQ:\n", Q, "\nR:\n", R)
         if i == 4:
-            res = matrix.Givens_reduction()
+            Q, R = matrix.Givens_reduction()
+            print("Givens reduction:\nQ:\n", Q, "\nR:\n", R)
     
     x = matrix.solve_equation()
     print("Solution of Ax=b is: ", x)
@@ -184,5 +187,5 @@ def main():
     print("det(A): ", determinant)
         
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
