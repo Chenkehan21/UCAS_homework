@@ -160,6 +160,7 @@ class Matrix():
 
             return res
 
+
 def main():
     A, b = get_matrix()
     matrix = Matrix(A, b)
