@@ -1,5 +1,6 @@
 import re
 import collections
+import random
 
 
 def load_dict():
@@ -19,8 +20,13 @@ def load_dict():
     with open("./ChineseCorpus.txt", "r", encoding='utf-8') as f:
         lines = f.readlines()
     lines = [re.sub(r'[\r|\n|\t]', '', line) for line in lines] # remove white space
-        
-    return preprocess_data(lines)
+    total_num = len(lines)
+    random.shuffle(lines)
+    n = int(0.7 * total_num)
+    train_lines = lines[: n]
+    test_lines = lines[n: ]
+    
+    return preprocess_data(train_lines), test_lines
 
 
 def check_dict(dict):
@@ -31,19 +37,22 @@ def check_dict(dict):
     return freq
 
 
-def get_corpus():
+def get_corpus(lines):
     def data_preprocess(line):
-        line = re.sub(r'[\r|\n|\t]', '', line) # remove white space
+        # line = re.sub(r'[\r|\n|\t]', '', line) # remove white space
         line = re.sub(r'[a-zA-Z_\[_\]]', '', line) # remove part of speech notations
         line = line.replace(' ', '') # remove spaces in one line
         
         return line[20:] # drop data
         
-    with open("./ChineseCorpus.txt", "r", encoding='utf-8') as f:
-        lines = f.readlines()
+    # with open("./ChineseCorpus.txt", "r", encoding='utf-8') as f:
+    #     lines = f.readlines()
     label_corpus = list(map(data_preprocess, lines))
+    label_corpus = [x for x in label_corpus if x != '']
+    source_corpus = [line.replace('/', '') for line in label_corpus]
     
-    return label_corpus
+    return source_corpus, label_corpus
+
 
 def FMM(sentence, cn_dict, spliter='/'):
     cn_dict = list(set(cn_dict))
@@ -56,6 +65,8 @@ def FMM(sentence, cn_dict, spliter='/'):
 
     while True:
         n = length - p
+        if n == 0:
+            break
         if n == 1:
             res += sentence[p] + spliter
             break
@@ -78,8 +89,22 @@ def FMM(sentence, cn_dict, spliter='/'):
     return res
 
 
+def test():
+    cn_dict, test_corpus = load_dict()
+    source_corpus, label_corpus = get_corpus(test_corpus)
+    res = [FMM(sentence, cn_dict) for sentence in source_corpus]
+    correct = 0
+    total_num = len(res)
+    for i in range(total_num):
+        if res[i] == label_corpus[i]:
+            correct += 1
+    acc = correct / total_num
+    
+    return acc
+    
+
 if __name__ == "__main__":
-    cn_dict = load_dict()
+    cn_dict, _ = load_dict()
     sentence1 = "这部电影很好看，我很喜欢它！"
     sentence2 = "他是研究生物化学的一位科学家。"
     sentence3 = "乒乓球拍卖完了。"
