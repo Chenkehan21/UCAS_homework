@@ -18,7 +18,7 @@ def load_data(path='./ORLData_25.mat'):
     return train_data, test_data
 
 
-def PCA2(data: np.array, k):
+def PCA(data: np.array, k):
     mean = np.mean(data, axis=0)
     data = data.astype(np.float64)
     data -= mean
@@ -40,7 +40,7 @@ def KNN(data, x): # k=1
 
 
 def test(train_data, test_data, pca_dim = 15):
-    train_data_pca, w = PCA2(train_data[:-1, :], pca_dim)
+    train_data_pca, w = PCA(train_data[:-1, :], pca_dim)
     test_data_pca = np.dot(w.T, test_data[:-1, :])
     _, n = test_data.shape
     index = []
