@@ -99,7 +99,7 @@ def test(train_data, test_data, k):
 
 def main():
     train_data, test_data = load_data()
-    LDA_K = [1, 2, 3, 4] # k < C
+    LDA_K = [1, 2, 3] # k <= C - 1
     acc = []
     for k in LDA_K:
         acc.append(test(train_data, test_data, k))
