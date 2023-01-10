@@ -76,14 +76,91 @@ def evaluate(D, P, C, metric='Jaccard'):
         return (SS + DD)/ (SS + SD + DS + DD)
     if metric == 'FM':
         return math.sqrt(SS**2 / ((SS + SD) * (SS + DS)))
+    
+    
+def distance_matrix(X):
+    n = X.shape[1]
+    G = np.dot(X.T, X)
+    H = np.tile(np.diag(G), (n, 1))
+    
+    return H + H.T - 2 * G
+
+
+def Hungarian(distance_matrix, index):
+    n = len(distance_matrix)
+    
+    # initialize
+    query = {key:[] for key in list(range(n))}
+    '''
+    index matrix:
+    C_a      2      1      0      3      4
+    
+    C_b      0      3      1      2      4
+    
+    C_c      4      1      0      2      3
+    
+    C_d      3      0      4      1      2
+    
+    C_e      0      1      2      3      4
+    
+    flag_index = [2, 0, 2, 1, 0]
+    
+    query = 
+    {
+        P_a: [C_b, C_e],
+        P_b: [],
+        P_c: [C_a],
+        P_d: [C_d],
+        P_e: [C_c]
+    }
+     =>
+    {
+        0: [1, 4],
+        1: [],
+        2: [0],
+        3: [3],
+        4: [2]
+    }
+    '''
+    for key in query.keys():
+        query[key] += [i for i in np.where(index[:, 0] == key)[0]]
+    bias = [0] * n
+    # update
+    while True:
+        counter = 0
+        for key in query.keys():
+            if len(query[key]) > 1:
+                d = distance_matrix.T[key][query[key]]
+                winner = query[key][np.argmin(d)]
+                for candidate in copy.deepcopy(query[key]):
+                    if candidate != winner:
+                        candidate_index = index[candidate]
+                        bias[candidate] += 1
+                        new_flag_index = candidate_index[bias[candidate]]
+                        query[key].remove(candidate)
+                        query[new_flag_index].append(candidate)
+            if len(query[key]) == 1:
+                counter += 1
+        if counter == n:
+            return query
+        
+    
+def match_cluster(cluster_means, raw_means):
+    n = cluster_means.shape[1]
+    all_means = np.hstack([cluster_means, raw_means])
+    distance = distance_matrix(all_means)[: n][:, n:] # distance matirx[i,j] = [cluster_mean_i, raw_mean_j]
+    index = np.argsort(distance)
+    query = Hungarian(distance, index)
+    
+    return query
 
 
 def main():
-    means=[[1., -1.],
+    means=np.array([[1., -1.],
            [5.5, -4.5],
            [1., 4.],
            [6., 4.5],
-           [9., 0.]]
+           [9., 0.]])
     
     with open('all_data.pkl', 'rb') as f:
         all_data = pickle.load(f)
@@ -97,9 +174,13 @@ def main():
     init_means = np.array([all_data[i][10] for i in range(len(all_data))])
     res, cluster_means, cluster_query, means_random = kmeans(5, data, 'random')
     print("cluster mean: ", cluster_means)
-    print("error: ", np.linalg.norm(cluster_means - means, ord=2, axis=1))
-    acc = evaluate(data, raw_data_query, cluster_query)
+    acc = evaluate(data, raw_data_query, cluster_query, 'FM')
     print("acc: ", acc)
+    query = match_cluster(cluster_means.T, means.T)
+    print(query)
+    for key in query.keys():
+        error = np.linalg.norm(means[key] - cluster_means[query[key]], ord=2)
+        print("error %d: "%key, error)
     
     color_list = ['g', 'b', 'r', 'orange', 'purple']
     fig = plt.figure()
@@ -135,3 +216,13 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # distance_matrix = np.array([
+    # [21, 1, 10, 33, 44],
+    # [2, 30, 40, 4, 50],
+    # [19, 4, 30, 40, 11],
+    # [4, 15, 18, 1, 10],
+    # [20, 21, 22, 23, 24]
+    # ])
+    # index = np.argsort(distance_matrix)
+    # print(index)
+    # query = Hungarian(distance_matrix, index)
