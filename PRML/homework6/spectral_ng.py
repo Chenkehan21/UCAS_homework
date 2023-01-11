@@ -23,14 +23,10 @@ def Laplacian(data, k, sigma):
         for j, y in zip(neighbour_id, neighbour):
             w[i, j] = gaussian(x, y)
     W = (w + w.T) / 2
-    # np.savetxt('W.out', W, delimiter=',')
     D = np.diag(np.sum(W, axis=1))
     L = D - W
-    # np.savetxt('L5.out', L, delimiter=',')
     D_sqrt = np.diag(np.sum(W, axis=1)**(-1/2))
     L_sym = np.dot(D_sqrt, np.dot(L, D_sqrt))
-    # L_sym = np.eye(*W.shape) - np.dot(D_sqrt, np.dot(W, D_sqrt))
-    # np.savetxt('L_sym5.out', L_sym, delimiter=',')
     
     return L_sym
 
