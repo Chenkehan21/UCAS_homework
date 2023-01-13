@@ -27,7 +27,7 @@ class RNNLM(nn.Module):
     def forward(self, x): # x shape: [batch_size, sentence length] input are sentences!
         # x = F.one_hot(x.T, self.vocab_size).type(torch.float32).to(self.device)
         x = self.C(x) # [batch_size, step, d]
-        y, hidden_state = self.rnn(x) 
+        y, hidden_state = self.rnn(x)
         # y.shape=[batch_size, step, D * hidden_size] (D=2 if use bidirectional RNN)
         # hidden_state.shape = [D * num_layers, batch_size, hidden_size] (num_layers=1 default)
         

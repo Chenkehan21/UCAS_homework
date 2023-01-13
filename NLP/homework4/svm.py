@@ -17,7 +17,6 @@ def svm():
     acc = classification_report(test_labels, predict)
     print(acc)
     
-    
 
 if __name__ == "__main__":
     svm()
