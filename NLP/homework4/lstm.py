@@ -61,7 +61,6 @@ class LSTM_CLF(nn.Module):
         self.num_layers = num_layers
         self.embedding = nn.Embedding(v, d)
         self.lstm = MaskedLSTM(input_size=d, hidden_size=hidden_size, num_layers=num_layers, batch_first=True)
-        self.flatten = nn.Flatten(start_dim=1, end_dim=-1)
         self.linear1 = nn.Linear(hidden_size, output_size)
         self.dropout = nn.Dropout(0.2)
         self.maxpool = nn.AdaptiveMaxPool1d(1)
