@@ -6,6 +6,7 @@ from string import punctuation as en_punc
 from torch.utils.data import Dataset, DataLoader
 import torch
 from torch.nn.utils.rnn import pad_sequence
+import pickle
 
 
 def load_data(path='./NLP_TC/traindata.txt'):
@@ -26,8 +27,15 @@ def load_data(path='./NLP_TC/traindata.txt'):
         content.append('<E>')
         sentences.append(content)
         labels.append(label)
-    label_type = list(set(labels))
-    label_map = {key:0+i for i, key in enumerate(label_type)}
+    # label_type = list(set(labels)) # "set" has no order !!!
+    # label_map = {key:0+i for i, key in enumerate(label_type)}
+    label_map = {
+        'EnterSports': 0,
+        'Economics': 1,
+        'Government': 2,
+        'Technology': 3,
+        'Military': 4,
+    }
     labels = [label_map[item] for item in labels]
         
     return sentences, labels
@@ -116,8 +124,12 @@ def prepare_data(batch_size, num_workers):
     testset = MyDataset(test_data, test_label)
     
     trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
-    devloader = DataLoader(devset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
-    testloader = DataLoader(testset, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers)
+    devloader = DataLoader(devset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=num_workers)
+    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, drop_last=True, num_workers=num_workers)
     print("load finish")
     
     return trainloader, devloader, testloader, vocab
+
+
+if __name__ == "__main__":
+    a, b = load_data()

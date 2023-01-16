@@ -1,3 +1,6 @@
+import os
+import random
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,8 +8,25 @@ from torch.nn.utils.rnn import pack_padded_sequence,pad_packed_sequence
 from tqdm import tqdm
 from preprocess import prepare_data
 from torch.utils.tensorboard import SummaryWriter
+from sklearn import metrics
+from NB import plot_confusion_matrix
+import pickle
 
-writer = SummaryWriter('./LSTM_CLF_batchsize128')
+# writer = SummaryWriter('./LSTM_CLF_batchsize128_2')
+
+def fix_seed(seed=3407):
+    seed = int(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    # os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+    # os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.enabled = True
 
 
 class MaskedLSTM(nn.Module):
@@ -89,9 +109,43 @@ def run_one_epoch(net, data_iter, optimizer, loss_func, device):
     return loss_a_epoch, acc
 
 
+def evaluate(net, stat_dict_path, data_iter, optimizer, loss_func, device):
+    ckpt = torch.load(stat_dict_path)
+    net.load_state_dict(ckpt['model_state_dict'])
+    net.eval()
+    
+    y_predict, ground_truth = [], []
+    label_map = {
+        0: 'EnterSports',
+        1: 'Economics',
+        2: 'Government',
+        3: 'Technology',
+        4: 'Military'
+    }
+    correct, n = 0, 0
+    with torch.no_grad():
+        for feature, label in data_iter:
+            feature, label = feature.long().to(device), label.long().to(device)
+            y_hat = net(feature)
+            label_hat = torch.argmax(F.softmax(y_hat, dim=1), dim=1)
+            correct += torch.sum(label_hat == label).item()
+            y_predict += label_hat.tolist()
+            ground_truth += label.tolist()
+            n += 1
+    true_labels = [label_map[i] for i in ground_truth]
+    predict_labels = [label_map[i] for i in y_predict]
+    report = metrics.classification_report(true_labels, predict_labels)
+    confusion = metrics.confusion_matrix(true_labels, predict_labels)
+    print(report)
+    print(confusion)
+    plot_confusion_matrix(cm=confusion, target_names=['EnterSports', 'Economics', 'Government', 'Technology', 'Military'],
+                          normalize=False, title="LSTM Confusion Matrix")
+
+
 def main():
+    fix_seed()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    batch_size = 128
+    batch_size = 100
     num_workers = 1
     lr = 1e-3
     d = 128 # look up table feature size
@@ -105,52 +159,57 @@ def main():
           %(batch_size, lr, v, d, hidden_size))
     
     net = LSTM_CLF(v=v, d=d, output_size=5, hidden_size=hidden_size, num_layers=1).to(device)
+    print(net)
     loss_func = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(net.parameters(), lr)
     
     epoch = 0
-    print("STRAT TO TRAIN!")
-    while True:
-        epoch += 1
-        net.train()
-        train_loss_a_epoch, train_acc = run_one_epoch(net, trainloader, optimizer, loss_func, device)
-        print("epoch: %d|train loss: %.3f|train acc: %.3f"%(epoch, train_loss_a_epoch, train_acc))
+    evaluate(net, './model_weights/batchsize_100_test_acc0.780.tar', testloader, optimizer, loss_func, device)
+    # print("STRAT TO TRAIN!")
+    # while True:
+    #     epoch += 1
+    #     net.train()
+    #     train_loss_a_epoch, train_acc = run_one_epoch(net, trainloader, optimizer, loss_func, device)
+    #     print("epoch: %d|train loss: %.3f|train acc: %.3f"%(epoch, train_loss_a_epoch, train_acc))
         
-        # validation
-        net.eval()
-        with torch.no_grad():
-            val_loss_a_epoch, val_acc = run_one_epoch(net, devloader, optimizer, loss_func, device)
-        print("epoch: %d|val loss: %.3f|val acc: %.3f"%(epoch, val_loss_a_epoch, val_acc))
+    #     # validation
+    #     net.eval()
+    #     with torch.no_grad():
+    #         val_loss_a_epoch, val_acc = run_one_epoch(net, devloader, optimizer, loss_func, device)
+    #     print("epoch: %d|val loss: %.3f|val acc: %.3f"%(epoch, val_loss_a_epoch, val_acc))
             
-        if epoch % 5 == 0:
-            print("===== TEST =====")
-            net.eval()
-            with torch.no_grad():
-                test_loss_a_epoch, test_acc = run_one_epoch(net, testloader, optimizer, loss_func, device)
-            print("epoch: %d|test loss: %.3f|test acc: %.3f"%(epoch, test_loss_a_epoch, test_acc))
-            if test_acc > best_acc:
-                best_acc = val_acc
-                save_path = "./model_weights/batchsize_%d_test_acc%.3f.tar"%(batch_size, val_acc)
-                torch.save({
-                    'epoch': epoch,
-                    'model_state_dict': net.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'lr': lr,
-                    'batch_size': batch_size,
-                    'hidden_size': hidden_size,
-                    'look_up_tabel': d,
-                    'train_loss': train_loss_a_epoch,
-                    'val_loss': val_loss_a_epoch, 
-                    'train_acc': train_acc,
-                    'val_acc': val_acc,
-                }, save_path)
+    #     if epoch % 5 == 0:
+    #         print("===== TEST =====")
+    #         net.eval()
+    #         with torch.no_grad():
+    #             test_loss_a_epoch, test_acc = run_one_epoch(net, testloader, optimizer, loss_func, device)
+                
+    #         print("epoch: %d|test loss: %.3f|test acc: %.3f"%(epoch, test_loss_a_epoch, test_acc))
+    #         if test_acc > best_acc:
+    #             best_acc = test_acc
+    #         save_path = "./model_weights2/batchsize_%d_test_acc%.3f.tar"%(batch_size, test_acc)
             
-            writer.add_scalars('loss', {'train_loss': train_loss_a_epoch,
-                                        'validation_loss': val_loss_a_epoch,
-                                        'test_loss': test_loss_a_epoch}, epoch)
-            writer.add_scalars('acc', {'train_acc': train_acc,
-                                        'validation_acc': val_acc,
-                                        'test_acc': test_acc}, epoch)
+    #         torch.save({
+    #             'epoch': epoch,
+    #             'model_state_dict': net.state_dict(),
+    #             'optimizer_state_dict': optimizer.state_dict(),
+    #             'lr': lr,
+    #             'batch_size': batch_size,
+    #             'hidden_size': hidden_size,
+    #             'look_up_tabel': d,
+    #             'train_loss': train_loss_a_epoch,
+    #             'val_loss': val_loss_a_epoch, 
+    #             'train_acc': train_acc,
+    #             'val_acc': val_acc,
+    #             'test_acc': test_acc
+    #         }, save_path)
+            
+            # writer.add_scalars('loss', {'train_loss': train_loss_a_epoch,
+            #                             'validation_loss': val_loss_a_epoch,
+            #                             'test_loss': test_loss_a_epoch}, epoch)
+            # writer.add_scalars('acc', {'train_acc': train_acc,
+            #                             'validation_acc': val_acc,
+            #                             'test_acc': test_acc}, epoch)
 
 
 if __name__ == "__main__":
