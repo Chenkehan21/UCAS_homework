@@ -4,13 +4,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pack_padded_sequence,pad_packed_sequence
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from tqdm import tqdm
 from preprocess import prepare_data
 from torch.utils.tensorboard import SummaryWriter
 from sklearn import metrics
 from NB import plot_confusion_matrix
-import pickle
 
 # writer = SummaryWriter('./LSTM_CLF_batchsize128_2')
 
